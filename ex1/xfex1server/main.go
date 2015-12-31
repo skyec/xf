@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"hash"
 	"io"
@@ -22,6 +23,8 @@ const CHUNK_SIZE = 1500
 
 var DEBUG bool
 
+var serverAddress string
+
 func init() {
 	if len(os.Getenv("DEBUG")) > 0 {
 		DEBUG = true
@@ -30,12 +33,15 @@ func init() {
 
 func main() {
 
+	flag.StringVar(&serverAddress, "server", ":9090", "server address")
+	flag.Parse()
+
 	http.HandleFunc("/newtest", newTest)
 	http.HandleFunc("/file", getMeta)
 	http.HandleFunc("/file/", getFile)
 	http.HandleFunc("/chunk/", getChunk)
-	log.Println("Listening on port :9090...")
-	http.ListenAndServe(":9090", nil)
+	log.Printf("Listening on port %s ...", serverAddress)
+	http.ListenAndServe(serverAddress, nil)
 
 }
 
