@@ -29,9 +29,41 @@ func init() {
 func main() {
 
 	http.HandleFunc("/newtest", newTest)
+	http.HandleFunc("/file", getMeta)
+	http.HandleFunc("/file/", getFile)
 	log.Println("Listening on port :9090...")
 	http.ListenAndServe(":9090", nil)
 
+}
+
+func getFile(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GET %s", r.URL.Path)
+	fd, err := os.Open(fmt.Sprintf("%s/%s", BASE_DIR, DATA_FILE))
+	if err != nil {
+		log.Printf("error opening datafile: %s", err)
+		http.Error(w, "error opening datafile", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "application/octet-stream")
+	_, err = io.Copy(w, fd)
+	if err != nil {
+		log.Printf("Error writing data file to client: %s", err)
+	}
+}
+
+func getMeta(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GET %s", r.URL.Path)
+	mf := newMetaFile(BASE_DIR)
+	err := mf.Load()
+	if err != nil {
+		log.Printf("error loading the metafile: %s", err)
+		http.Error(w, "error loading the metafil", http.StatusInternalServerError)
+	}
+	w.Header().Add("Content-Type", "application/json")
+	_, err = w.Write(mf.Bytes())
+	if err != nil {
+		log.Printf("error writing meta file json to client: %s", err)
+	}
 }
 
 type chunkWriter struct {
@@ -163,6 +195,7 @@ func newSha1Reader(r io.Reader) *sha1Reader {
 }
 
 func newTest(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GET %s", r.URL.Path)
 
 	in, err := os.Open("/dev/random")
 	if err != nil {
@@ -246,4 +279,12 @@ func (mf *metaFile) String() string {
 
 func (mf *metaFile) Save() error {
 	return ioutil.WriteFile(fmt.Sprintf("%s/%s", mf.dir, META_FILE_NAME), mf.Bytes(), 0644)
+}
+
+func (mf *metaFile) Load() error {
+	b, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", mf.dir, META_FILE_NAME))
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, mf)
 }
