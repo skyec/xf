@@ -16,6 +16,7 @@ import (
 	"strconv"
 )
 
+const RANDOM_DEV = "/dev/urandom"
 const BASE_DIR = "/tmp/xfex1"
 const DATA_FILE = "datafile"
 const CHUNK_DIR = "chunks"
@@ -24,6 +25,7 @@ const CHUNK_SIZE = 1500
 var DEBUG bool
 
 var serverAddress string
+var randomSource string
 
 func init() {
 	if len(os.Getenv("DEBUG")) > 0 {
@@ -34,6 +36,7 @@ func init() {
 func main() {
 
 	flag.StringVar(&serverAddress, "server", ":9090", "server address")
+	flag.StringVar(&randomSource, "random", RANDOM_DEV, "source for random bits")
 	flag.Parse()
 
 	http.HandleFunc("/newtest", newTest)
@@ -237,10 +240,10 @@ func newSha1Reader(r io.Reader) *sha1Reader {
 func newTest(w http.ResponseWriter, r *http.Request) {
 	log.Printf("GET %s", r.URL.Path)
 
-	in, err := os.Open("/dev/random")
+	in, err := os.Open(randomSource)
 	if err != nil {
-		log.Println("Failed to open /dev/random: ", err)
-		http.Error(w, "Failed to open /dev/random", http.StatusInternalServerError)
+		log.Printf("Failed to open %s: ", randomSource, err)
+		http.Error(w, "Failed to open random source", http.StatusInternalServerError)
 		return
 	}
 	inSha1 := newSha1Reader(in)
