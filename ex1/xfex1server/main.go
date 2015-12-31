@@ -48,6 +48,18 @@ func newChunkWriter(dir string) *chunkWriter {
 	}
 }
 
+func (cw *chunkWriter) initChunkFile() error {
+	chunkN := cw.chunkCount + 1
+	fd, err := os.Create(fmt.Sprintf("%s/%d", cw.dir, chunkN))
+	if err != nil {
+		return fmt.Errorf("error creating chunk file %d: %s", chunkN, err)
+	}
+	cw.chunkCount = chunkN
+	cw.chunk.fd = fd
+	cw.chunk.written = 0
+	return nil
+}
+
 func (cw *chunkWriter) Write(b []byte) (int, error) {
 	if DEBUG {
 		log.Printf("Chunk write (%d)\n", len(b))
@@ -65,14 +77,10 @@ func (cw *chunkWriter) Write(b []byte) (int, error) {
 	// initialize the chunk fd
 	if cw.chunk.fd == nil {
 		log.Println("Init first chunk file")
-		chunkN := cw.chunkCount + 1
-		fd, err := os.Create(fmt.Sprintf("%s/%d", cw.dir, chunkN))
+		err := cw.initChunkFile()
 		if err != nil {
-			return 0, fmt.Errorf("error creating chunk file %d: %s", chunkN, err)
+			return 0, err
 		}
-		cw.chunkCount = chunkN
-		cw.chunk.fd = fd
-		cw.chunk.written = 0
 	}
 
 	written := 0
@@ -99,23 +107,20 @@ func (cw *chunkWriter) Write(b []byte) (int, error) {
 		// DRY
 		if cw.chunk.written == CHUNK_SIZE {
 
-			chunkN := cw.chunkCount + 1
-			if DEBUG {
-				log.Println("Init the next chunk file:", chunkN)
-			}
 			err := cw.chunk.fd.Close()
 			if err != nil {
 				return written, fmt.Errorf("error closing the chunk file: %s", err)
 			}
 
-			fd, err := os.Create(fmt.Sprintf("%s/%d", cw.dir, chunkN))
+			err = cw.initChunkFile()
 			if err != nil {
-				return written, fmt.Errorf("error creating chunk file %d: %s", chunkN, err)
+				return written, err
 			}
-			cw.chunkCount = chunkN
-			cw.chunk.fd = fd
-			cw.chunk.written = 0
 			sz = CHUNK_SIZE
+
+			if DEBUG {
+				log.Println("Init the next chunk file:", cw.chunkCount)
+			}
 		}
 
 		if len(b)-written < int(sz) {
