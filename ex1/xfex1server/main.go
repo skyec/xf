@@ -73,6 +73,7 @@ func getChunk(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error writing chunk to client: %s", err)
 	}
+	fd.Close()
 }
 
 func getFile(w http.ResponseWriter, r *http.Request) {
