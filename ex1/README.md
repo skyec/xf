@@ -41,7 +41,6 @@ Add a few extra features to the server:
 - HTTP endpoint to return info about the test file:
   - sha1sum
   - file size
-  - file name (sha1sum + date stamp)
   - number of chunks
 
 ## HTTP Endpoints
