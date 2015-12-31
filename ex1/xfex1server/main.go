@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"io"
@@ -36,6 +37,7 @@ type chunkWriter struct {
 	dir        string
 	dirInit    bool
 	chunkCount int64
+	byteCount  int64
 	chunk      struct {
 		fd      *os.File
 		written int64
@@ -129,6 +131,7 @@ func (cw *chunkWriter) Write(b []byte) (int, error) {
 			chunk = b[written : written+int(sz)]
 		}
 	}
+	cw.byteCount += int64(written)
 	return written, nil
 }
 
@@ -199,5 +202,38 @@ func newTest(w http.ResponseWriter, r *http.Request) {
 	log.Println("Chunks:", chunks.dir)
 	log.Println("NChunks:", chunks.chunkCount)
 
-	w.Write([]byte(fmt.Sprintf("{\"sha1\":\"%s\",\"nchunks\":%d}", inSha1, chunks.chunkCount)))
+	mf := newMetaFile(BASE_DIR)
+	mf.Sha1 = inSha1.String()
+	mf.Chunks = chunks.chunkCount
+	mf.Size = chunks.byteCount
+
+	w.Write(mf.Bytes())
+}
+
+const META_FILE_NAME = "meta.json"
+
+type metaFile struct {
+	Sha1   string `json:"sha1"`
+	Chunks int64  `json:"chunks"`
+	Size   int64  `json:"size"`
+	dir    string
+}
+
+func newMetaFile(dir string) *metaFile {
+	return &metaFile{
+		dir: dir,
+	}
+}
+
+func (mf *metaFile) Bytes() []byte {
+	b, err := json.Marshal(mf)
+	if err != nil {
+		log.Printf("error marshalling meta file data!!")
+		panic("Outa here!")
+	}
+	return b
+}
+
+func (mf *metaFile) String() string {
+	return string(mf.Bytes())
 }
