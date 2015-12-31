@@ -11,6 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strconv"
 )
 
 const BASE_DIR = "/tmp/xfex1"
@@ -31,9 +33,40 @@ func main() {
 	http.HandleFunc("/newtest", newTest)
 	http.HandleFunc("/file", getMeta)
 	http.HandleFunc("/file/", getFile)
+	http.HandleFunc("/chunk/", getChunk)
 	log.Println("Listening on port :9090...")
 	http.ListenAndServe(":9090", nil)
 
+}
+
+func getChunk(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GET %s", r.URL.Path)
+	chunkN, err := strconv.Atoi(path.Base(r.URL.Path))
+	if err != nil {
+		log.Printf("error parsing chunk number from path %s: %s", r.URL.Path, err)
+		http.Error(w, "error parsing chunk number from path", http.StatusBadRequest)
+		return
+	}
+
+	chunkFileName := fmt.Sprintf("%s/%s/%d", BASE_DIR, CHUNK_DIR, chunkN)
+
+	fd, err := os.Open(chunkFileName)
+	if err != nil && os.IsNotExist(err) {
+		log.Println("Not found")
+		http.Error(w, "Chunk not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("error opening chunk file %s: %s", chunkFileName, err)
+		http.Error(w, "error opening chunk file", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/octet-stream")
+	_, err = io.Copy(w, fd)
+	if err != nil {
+		log.Printf("error writing chunk to client: %s", err)
+	}
 }
 
 func getFile(w http.ResponseWriter, r *http.Request) {
