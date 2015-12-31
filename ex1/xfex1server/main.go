@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -207,6 +208,11 @@ func newTest(w http.ResponseWriter, r *http.Request) {
 	mf.Chunks = chunks.chunkCount
 	mf.Size = chunks.byteCount
 
+	err = mf.Save()
+	if err != nil {
+		log.Printf("Error saving meta file: %s", err)
+		http.Error(w, "Error saving meta file", http.StatusInternalServerError)
+	}
 	w.Write(mf.Bytes())
 }
 
@@ -236,4 +242,8 @@ func (mf *metaFile) Bytes() []byte {
 
 func (mf *metaFile) String() string {
 	return string(mf.Bytes())
+}
+
+func (mf *metaFile) Save() error {
+	return ioutil.WriteFile(fmt.Sprintf("%s/%s", mf.dir, META_FILE_NAME), mf.Bytes(), 0644)
 }
