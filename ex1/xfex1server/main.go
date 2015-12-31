@@ -196,7 +196,7 @@ func newTest(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("File generated:", data_file)
 	log.Println("SHA1:", inSha1)
-	log.Println("Chunks:", CHUNK_DIR)
+	log.Println("Chunks:", chunks.dir)
 	log.Println("NChunks:", chunks.chunkCount)
 
 	w.Write([]byte(fmt.Sprintf("{\"sha1\":\"%s\",\"nchunks\":%d}", inSha1, chunks.chunkCount)))
